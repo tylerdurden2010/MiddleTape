@@ -3,7 +3,7 @@
 from libmproxy import controller, proxy
 import os,re
 import zlib
-noresult = "(\.jpg|\.gif|\.png|\.css|\.js|\.ico)"
+noresult = "(\.jpg|\.gif|\.png|\.css|\.js$|\.ico)"
 
 filter = re.compile(noresult,re.IGNORECASE)
 
