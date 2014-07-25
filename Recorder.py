@@ -2,7 +2,8 @@
 
 from libmproxy import controller, proxy
 import os,re
-noresult = "(\.jpg|\.gif|\.png|\.css|\.js)"
+import zlib
+noresult = "(\.jpg|\.gif|\.png|\.css|\.js|\.ico)"
 
 filter = re.compile(noresult,re.IGNORECASE)
 
@@ -20,24 +21,26 @@ class StickyMaster(controller.Master):
             self.shutdown()
 
     def handle_request(self, msg):
-        #print msg.method + " " +msg.path
-        #print msg.get_url()
-        #print msg.headers
-        #print msg.content
-        body = str(msg.method) + " "+ str(msg.path) + " HTTP/1.1\r\n" + str(msg.headers) + "\r\n" + str(msg.content) + "\r\n"
-       
-        #print self.Noporxy_request(msg.path)
+        #hid = (msg.host, msg.port)
+        #print msg.host
+        if msg.headers["Content-Encoding"] == ['gzip']:
+            #print msg.headers["Content-Encoding"]
+            postdata = self.Decode_Request_Body(msg.content)
+        else:
+            postdata = str(msg.content)
+
+        body = str(msg.method) + " "+ str(msg.path) + " HTTP/1.1\r\n" + str(msg.headers) + "\r\n" + postdata + "\r\n"
 
         if( self.Noporxy_request(msg.path) ):
             pass
         else:
-            self.Record_request(body,self.nametail)
+            self.Record_request(body,self.nametail,msg.host)
         
 
         msg.reply()
 
-    def Record_request(self,content,nametail):
-        filename = "/tmp/request"+str(StickyMaster.nametail)
+    def Record_request(self,content,nametail,hostname):
+        filename = "/tmp/request."+hostname+'.'+str(StickyMaster.nametail)
         StickyMaster.nametail = StickyMaster.nametail + 1
         try:
             file = open(filename,"a")
@@ -52,6 +55,12 @@ class StickyMaster(controller.Master):
     def Noporxy_request(self,url):
         oururl = str(url)
         result = filter.search(url)
+        return result
+
+    def Decode_Request_Body(self,data):
+        if(not data):
+            return ""
+        result = zlib.decompress(data,16+zlib.MAX_WBITS)
         return result
 
 config = proxy.ProxyConfig(cacert = os.path.expanduser("~/.mitmproxy/mitmproxy-ca.pem"))
